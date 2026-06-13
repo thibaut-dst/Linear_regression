@@ -205,49 +205,6 @@ def ols_from_scratch():
         width=800, height=500, legend=dict(x=0.02, y=0.98))
     fig.show()
 
-def mle_demo():
-    """Notebook cell 18."""
-    global b0_mle, b1_grid, b1_mle, fig, ll_vals, log_s2_mle, neg_log_likelihood, res, rss_val, s2_mle, s2_mle_fm, s2_ols_fm
-    # ─── MLE via numerical optimisation ───────────────────────────────────────────
-    def neg_log_likelihood(params, x, y):
-        b0, b1, log_s2 = params
-        s2 = np.exp(log_s2)          # log-transform ensures s2 > 0
-        nll = (len(y)/2)*np.log(2*np.pi*s2) + np.sum((y - b0 - b1*x)**2) / (2*s2)
-        return nll
-    
-    res = minimize(neg_log_likelihood, x0=[0, 1, np.log(0.01)], args=(x, y), method='BFGS')
-    b0_mle, b1_mle, log_s2_mle = res.x
-    s2_mle = np.exp(log_s2_mle)
-    
-    rss_val    = np.sum(residuals**2)
-    s2_mle_fm  = rss_val / n       # MLE formula
-    s2_ols_fm  = rss_val / (n - 2) # OLS (unbiased)
-    
-    print("=== Coefficients (should be identical) ===")
-    print(f"  OLS: β₀={beta0_ols:.6f}, β₁={beta1_ols:.6f}")
-    print(f"  MLE: β₀={b0_mle:.6f}, β₁={b1_mle:.6f}")
-    print(f"\n=== σ² estimates ===")
-    print(f"  MLE  (biased, /n)  : {s2_mle_fm:.6f}")
-    print(f"  OLS  (unbiased,/n-2): {s2_ols_fm:.6f}")
-    print(f"  Ratio n/(n-2) = {n/(n-2):.4f}  (MLE underestimates σ²)")
-    
-    # ─── Log-likelihood profile for β₁ ───────────────────────────────────────────
-    b1_grid = np.linspace(beta1_ols - 0.6, beta1_ols + 0.6, 300)
-    ll_vals  = [-neg_log_likelihood([beta0_ols, b, log_s2_mle], x, y) for b in b1_grid]
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=b1_grid, y=ll_vals, mode='lines',
-        line=dict(color=C['fit'], width=2), name='ℓ(β₁)'))
-    fig.add_vline(x=beta1_ols, line=dict(color=C['fit'], dash='dash'),
-        annotation_text=f'MLE=OLS: {beta1_ols:.4f}', annotation_position='top right')
-    fig.add_vline(x=true_beta, line=dict(color=C['true'], dash='dot'),
-        annotation_text=f'True β₁={true_beta}', annotation_position='top left')
-    fig.update_layout(
-        title='Log-likelihood profile ℓ(β₁)  — β₀ and σ² fixed at OLS estimates',
-        xaxis_title='β₁', yaxis_title='Log-likelihood  ℓ',
-        width=700, height=400)
-    fig.show()
-
 def sst_ssr_rss_demo():
     """Notebook cell 21."""
     global COL_RSS, COL_SSR, COL_SST, b0_d, b1_d, col, fig_d, i, n_d, x_d, xb_d, xl_d, y_d, yb_d, yhat_d
