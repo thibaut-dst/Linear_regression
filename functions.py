@@ -55,8 +55,7 @@ def capm_demo():
 def ols_minimization_demo():
     """Notebook cell 12."""
     global COL_BAD, COL_OLS, b0_bad, b0_opt, b1_bad, b1_opt, fig, i, n_il, rss_bad, rss_opt, x_il, x_line, xb_il, y_il, yb_il, yhat_bad, yhat_opt
-    # ─── Illustrative chart: what OLS minimises ───────────────────────────────────
-    # Small toy dataset for visual clarity
+    # ─── Illustrative chart: compare a suboptimal line vs the OLS solution ──────
     np.random.seed(7)
     n_il = 14
     x_il = np.linspace(1, 9, n_il)
@@ -68,7 +67,7 @@ def ols_minimization_demo():
     b0_opt = yb_il - b1_opt * xb_il
     
     # A plausible-looking but suboptimal line
-    b0_bad, b1_bad = 0.5, 1.8
+    b0_bad, b1_bad = -0.5, 2.0
     
     yhat_opt = b0_opt + b1_opt * x_il
     yhat_bad = b0_bad + b1_bad * x_il
@@ -76,51 +75,87 @@ def ols_minimization_demo():
     rss_bad  = np.sum((y_il - yhat_bad)**2)
     
     x_line = np.linspace(0, 10, 200)
+    y_line_bad = b0_bad + b1_bad * x_line
+    y_line_opt = b0_opt + b1_opt * x_line
+    y_all = np.concatenate([y_il, yhat_bad, yhat_opt, y_line_bad, y_line_opt])
+    y_pad = 0.08 * (y_all.max() - y_all.min())
+    y_range = [y_all.min() - y_pad, y_all.max() + y_pad]
     
     # Colours
     COL_BAD = '#AB63FA'   # purple  — candidate line
     COL_OLS = '#FFA15A'   # orange  — OLS line
     
-    fig = go.Figure()
-    
-    # ── Vertical bars: candidate line (purple) ────────────────────────────────────
-    for i in range(n_il):
-        fig.add_shape(type='line',
-            x0=x_il[i], y0=y_il[i], x1=x_il[i], y1=yhat_bad[i],
-            line=dict(color=COL_BAD, width=2))
-    
-    # ── Vertical bars: OLS line (orange) — drawn on top ──────────────────────────
-    for i in range(n_il):
-        fig.add_shape(type='line',
-            x0=x_il[i], y0=y_il[i], x1=x_il[i], y1=yhat_opt[i],
-            line=dict(color=COL_OLS, width=1.5))
-    
-    # ── Legend proxies for the bars (shapes have no legend entry by default) ──────
-    fig.add_trace(go.Scatter(x=[None], y=[None], mode='lines',
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=(
+            f'Candidate line  (Σeᵢ² = {rss_bad:.1f})',
+            f'OLS line  (Σeᵢ² = {rss_opt:.1f})'
+        ),
+        horizontal_spacing=0.10
+    )
+
+    # Left panel: suboptimal candidate line
+    fig.add_trace(go.Scatter(
+        x=x_line, y=y_line_bad, mode='lines',
         line=dict(color=COL_BAD, width=2),
-        name=f'Residuals eᵢ — candidate line  (Σeᵢ² = {rss_bad:.1f})'))
-    fig.add_trace(go.Scatter(x=[None], y=[None], mode='lines',
+        name='Candidate line'
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=x_il, y=y_il, mode='markers',
+        marker=dict(color='black', size=7, opacity=0.85),
+        name='Data'
+    ), row=1, col=1)
+    for i in range(n_il):
+        fig.add_shape(
+            type='line',
+            x0=x_il[i], y0=y_il[i], x1=x_il[i], y1=yhat_bad[i],
+            line=dict(color=COL_BAD, width=2, dash='dash'),
+            row=1, col=1
+        )
+
+    # Right panel: OLS line
+    fig.add_trace(go.Scatter(
+        x=x_line, y=y_line_opt, mode='lines',
         line=dict(color=COL_OLS, width=2),
-        name=f'Residuals eᵢ — OLS line  (Σeᵢ² = {rss_opt:.1f})  ← minimum'))
-    
-    # ── Fitted lines ──────────────────────────────────────────────────────────────
-    fig.add_trace(go.Scatter(x=x_line, y=b0_bad + b1_bad * x_line, mode='lines',
-        line=dict(color=COL_BAD, width=2, dash='dash'), name='Candidate line'))
-    fig.add_trace(go.Scatter(x=x_line, y=b0_opt + b1_opt * x_line, mode='lines',
-        line=dict(color=COL_OLS, width=2, dash='dash'), name='OLS line'))
-    
-    # ── Data points ───────────────────────────────────────────────────────────────
-    fig.add_trace(go.Scatter(x=x_il, y=y_il, mode='markers',
-        marker=dict(color='black', size=7, opacity=0.85), name='Data'))
-    
+        name='OLS line'
+    ), row=1, col=2)
+    fig.add_trace(go.Scatter(
+        x=x_il, y=y_il, mode='markers',
+        marker=dict(color='black', size=7, opacity=0.85),
+        name='Data',
+        showlegend=False
+    ), row=1, col=2)
+    for i in range(n_il):
+        fig.add_shape(
+            type='line',
+            x0=x_il[i], y0=y_il[i], x1=x_il[i], y1=yhat_opt[i],
+            line=dict(color=COL_OLS, width=2, dash='dash'),
+            row=1, col=2
+        )
+
+    # Legend proxies for residual bars
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None], mode='lines',
+        line=dict(color=COL_BAD, width=2, dash='dash'),
+        name='Residuals to candidate line'
+    ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None], mode='lines',
+        line=dict(color=COL_OLS, width=2, dash='dash'),
+        name='Residuals to OLS line'
+    ), row=1, col=1)
+
+    fig.update_xaxes(title_text='x', range=[0, 10], row=1, col=1)
+    fig.update_xaxes(title_text='x', range=[0, 10], row=1, col=2)
+    fig.update_yaxes(title_text='y', range=y_range, row=1, col=1)
+    fig.update_yaxes(title_text='y', range=y_range, matches='y', row=1, col=2)
+
     fig.update_layout(
-        title=(f'OLS minimises Σeᵢ²  —  same chart, two lines, two sets of residuals<br>'
-               f'Purple bars² sum to <b>{rss_bad:.1f}</b>  |  '
-               f'Orange bars² sum to <b>{rss_opt:.1f}</b>  ← OLS achieves the minimum'),
-        xaxis_title='x', yaxis_title='y',
-        xaxis_range=[0, 10],
-        height=490, width=820,
-        legend=dict(x=0.01, y=0.99, bgcolor='rgba(255,255,255,0.85)',
+        title='OLS minimises the sum of squared residuals: compare the same data under two fitted lines',
+        height=500, width=980,
+        margin=dict(b=110),
+        legend=dict(x=0.5, y=-0.16, xanchor='center', orientation='h',
+                    bgcolor='rgba(255,255,255,0.85)',
                     bordercolor='lightgray', borderwidth=1))
     fig.show()
     
