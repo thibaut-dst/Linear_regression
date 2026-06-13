@@ -762,10 +762,10 @@ def adjusted_r2_demo():
         title='R² always increases; Adj R², AIC, BIC correctly penalise noise predictors')
     fig.show()
     
-    print("k  |  R²     | Adj R²  |  AIC    |  BIC")
-    print("-" * 45)
-    for i, r in enumerate(results):
-        print(f"{r['k']}  | {r['r2']:.5f} | {r['adj_r2']:.5f} | {r['aic']:.2f} | {r['bic']:.2f}")
+    # print("k  |  R²     | Adj R²  |  AIC    |  BIC")
+    # print("-" * 45)
+    # for i, r in enumerate(results):
+    #     print(f"{r['k']}  | {r['r2']:.5f} | {r['adj_r2']:.5f} | {r['aic']:.2f} | {r['bic']:.2f}")
 
 def multicollinearity_vif_demo():
     """Notebook cell 38."""
@@ -778,7 +778,7 @@ def multicollinearity_vif_demo():
     x1 = np.random.normal(0, 1, n_mc)
     x2 = 0.97*x1 + np.random.normal(0, np.sqrt(1 - 0.97**2), n_mc)  # corr ≈ 0.97
     x3 = np.random.normal(0, 1, n_mc)   # independent
-    y_mc = 1 + 2*x1 + 3*x2 + 1.5*x3 + np.random.normal(0, 0.5, n_mc)
+    y_mc = 1 + 2*x1 + 2*x2 + 1.5*x3 + np.random.normal(0, 0.5, n_mc)
     
     print(f"Correlation x1-x2: {np.corrcoef(x1, x2)[0,1]:.4f}  (nearly 1!)")
     print(f"Correlation x1-x3: {np.corrcoef(x1, x3)[0,1]:.4f}")
@@ -815,16 +815,19 @@ def multicollinearity_vif_demo():
     
         # Clean version: replace x2 with uncorrelated x2_clean
         x2c = np.random.normal(0, 1, n_mc)
-        y_c = 1 + 2*x1[idx] + 3*x2c[idx] + 1.5*x3[idx] + np.random.normal(0, 0.5, n_mc)
+        y_c = 1 + 2*x1[idx] + 2*x2c[idx] + 1.5*x3[idx] + np.random.normal(0, 0.5, n_mc)
         Xc  = np.column_stack([np.ones(n_mc), x1[idx], x2c[idx], x3[idx]])
         betas_clean.append(np.linalg.solve(Xc.T@Xc, Xc.T@y_c)[1:])
     
     bc = np.array(betas_collinear)
     bk = np.array(betas_clean)
+    all_beta_draws = np.concatenate([bc.ravel(), bk.ravel()])
+    x_pad = 0.08 * (all_beta_draws.max() - all_beta_draws.min())
+    shared_x_range = [all_beta_draws.min() - x_pad, all_beta_draws.max() + x_pad]
     
     fig = make_subplots(rows=1, cols=3,
         subplot_titles=['β₁ distribution', 'β₂ distribution', 'β₃ distribution'])
-    for j, (tru, name) in enumerate(zip([2,3,1.5], ['x₁','x₂','x₃'])):
+    for j, (tru, name) in enumerate(zip([2,2,1.5], ['x₁','x₂','x₃'])):
         fig.add_trace(go.Histogram(x=bc[:,j], opacity=0.6,
             marker_color=C['fit'], name=f'Collinear {name}',
             nbinsx=40, showlegend=(j==0)), row=1, col=j+1)
@@ -832,6 +835,7 @@ def multicollinearity_vif_demo():
             marker_color=C['true'], name=f'Clean {name}',
             nbinsx=40, showlegend=(j==0)), row=1, col=j+1)
         fig.add_vline(x=tru, line=dict(color='black', dash='dash'), row=1, col=j+1)
+        fig.update_xaxes(range=shared_x_range, row=1, col=j+1)
     
     fig.update_layout(barmode='overlay', height=400, width=1000,
         title='Bootstrap distributions of β̂ — collinear (red) vs clean (green)<br>'
