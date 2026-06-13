@@ -510,7 +510,7 @@ def fama_french_two_factor_demo():
     
 def projection_onto_span_demo():
     """Illustrate that OLS fitted values are the projection of y onto span(X)."""
-    global basis_a, basis_b, corner_pts, fig_proj, normal_unit, normal_vec, perp_dir, x_span, y_vec, y_hat_vec
+    global basis_a, basis_b, corner_pts, fig_proj, marker_pts, normal_unit, normal_vec, perp_dir, plane_dir, x_span, y_vec, y_hat_vec
     # ─── Simple 3D projection picture: one vector y projected onto a 2D subspace ─
     # Choose two basis vectors that span a plane in R^3
     basis_a = np.array([2.35, -0.25, 0.02])
@@ -592,6 +592,24 @@ def projection_onto_span_demo():
         mode='lines',
         line=dict(color='#EF553B', width=3),
         name='Residual e'
+    ))
+
+    # Small right-angle marker to show orthogonality cleanly
+    plane_dir = -y_hat_vec / np.linalg.norm(y_hat_vec)
+    marker_scale_plane = 0.175
+    marker_scale_normal = 0.05
+    marker_pts = np.array([
+        y_hat_vec,
+        y_hat_vec + marker_scale_plane * plane_dir,
+        y_hat_vec + marker_scale_plane * plane_dir + marker_scale_normal * normal_unit,
+        y_hat_vec + marker_scale_normal * normal_unit
+    ])
+    fig_proj.add_trace(go.Scatter3d(
+        x=marker_pts[:, 0], y=marker_pts[:, 1], z=marker_pts[:, 2],
+        mode='lines',
+        line=dict(color='rgba(30,30,30,0.88)', width=2),
+        hoverinfo='skip',
+        showlegend=False
     ))
 
     fig_proj.update_layout(
