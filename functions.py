@@ -164,7 +164,7 @@ def ols_minimization_demo():
 
 def ols_from_scratch():
     """Notebook cell 14."""
-    global beta0_ols, beta1_ols, fig, i, lr, residuals, x, x_bar, x_line, y, y_bar, y_hat
+    global beta0_ols, beta1_ols, fig, i, residuals, x, x_bar, x_line, y, y_bar, y_hat
     # ─── OLS from scratch ─────────────────────────────────────────────────────────
     x, y = market_excess, stock_excess
     
@@ -174,14 +174,13 @@ def ols_from_scratch():
     y_hat     = beta0_ols + beta1_ols * x
     residuals = y - y_hat
     
-    print("=== OLS (from scratch) ===")
-    print(f"  β₀ (alpha) = {beta0_ols:.6f}  [true: {true_alpha}]")
-    print(f"  β₁ (beta)  = {beta1_ols:.6f}  [true: {true_beta}]")
-    
-    # ─── Validate against sklearn + plot ──────────────────────────────────────────
-    lr = LinearRegression().fit(x.reshape(-1, 1), y)
-    print("=== sklearn validation ===")
-    print(f"  β₀ = {lr.intercept_:.6f}  β₁ = {lr.coef_[0]:.6f}  (should match above ✓)")
+    print("=== Coefficients ===")
+    print("Data-generating line (the true relationship used to simulate the data):")
+    print(f"  β₀ = {true_alpha:.6f}")
+    print(f"  β₁ = {true_beta:.6f}")
+    print("OLS fitted line (estimated from the simulated sample):")
+    print(f"  β₀ = {beta0_ols:.6f}")
+    print(f"  β₁ = {beta1_ols:.6f}")
     
     x_line = np.linspace(x.min(), x.max(), 200)
     
