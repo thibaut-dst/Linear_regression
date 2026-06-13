@@ -1,3 +1,5 @@
-Linear_regression.ipynb is a from-scratch, concept-first walkthrough of linear regression. It starts with univariate OLS and maximum likelihood estimation, then expands into multivariate regression, residual diagnostics, leverage and Cook’s distance, adjusted R², multicollinearity, omitted variable bias, and the full Gauss-Markov framework. It also covers practical fixes for real-world violations like heteroscedasticity and autocorrelation, before moving into Ridge, Lasso, Elastic Net, and Bayesian linear regression.
+`Linear_regression.ipynb` is a from-scratch, concept-first walkthrough of linear regression. 
+
+It starts with univariate OLS and maximum likelihood estimation, then expands into multivariate regression, residual diagnostics, leverage and Cook’s distance, adjusted R², multicollinearity, omitted variable bias, and the full Gauss-Markov framework. It also covers practical fixes for real-world violations like heteroscedasticity and autocorrelation, before moving into Ridge, Lasso, Elastic Net, and Bayesian linear regression.
 
 The notebook is especially strong as a learning resource because it combines derivations, intuition, and visual demos in one place. Examples are grounded in finance-style use cases such as CAPM and factor modeling, and the implementation uses numpy, statsmodels, scikit-learn, and plotly.
