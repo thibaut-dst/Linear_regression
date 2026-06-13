@@ -362,7 +362,7 @@ def residual_diagnostics_demo():
 
 def fama_french_two_factor_demo():
     """Notebook cell 29."""
-    global MKT_g, SMB_g, X_ff, Y_plane, beta_hat, eps_ff, est, fig_plane, i, lab, lr_ff, mkt, mkt_g, n_ff, ret_ff, smb, smb_g, tru, true_alpha_ff, true_betas, xs_r, yhat_ff, ys_r, zs_r
+    global MKT_g, SMB_g, X_ff, Y_plane, ann_idx, beta_hat, eps_ff, est, fig_plane, i, lab, lr_ff, mkt, mkt_g, n_ff, point_colors, point_sizes, residual_abs, residual_ff, ret_ff, smb, smb_g, tru, true_alpha_ff, true_betas, xs_r, yhat_ff, ys_r, zs_r
     # ─── Fama-French 2-factor data (MKT + SMB) ───────────────────────────────────
     # Two regressors so the fit lives on a plane we can plot in 3D
     np.random.seed(42)
@@ -407,35 +407,191 @@ def fama_french_two_factor_demo():
         zs_r += [ret_ff[i], yhat_ff[i], None]
     
     fig_plane = go.Figure()
+    residual_ff = ret_ff - yhat_ff
+    residual_abs = np.abs(residual_ff)
+    point_colors = residual_abs
+    point_sizes = 4 + 3 * residual_abs / residual_abs.max()
+    ann_idx = [
+        int(np.argmax(residual_abs)),
+        int(np.argmin(residual_abs))
+    ]
     
     fig_plane.add_trace(go.Surface(
         x=MKT_g, y=SMB_g, z=Y_plane,
-        colorscale=[[0, 'rgba(99,110,250,0.25)'], [1, 'rgba(99,110,250,0.55)']],
-        showscale=False, opacity=0.6,
+        colorscale=[[0, '#B6CCFE'], [1, '#4C78A8']],
+        showscale=False, opacity=0.42,
+        contours=dict(
+            z=dict(show=True, usecolormap=False, color='rgba(70,90,120,0.55)', width=1.2)
+        ),
         name='Regression plane  ŷ = β̂₀ + β̂₁·mkt + β̂₂·smb'))
     
     fig_plane.add_trace(go.Scatter3d(
         x=mkt, y=smb, z=ret_ff, mode='markers',
-        marker=dict(size=2.5, color='black', opacity=0.55),
-        name='Observations'))
+        marker=dict(
+            size=point_sizes,
+            color=point_colors,
+            colorscale='YlOrRd',
+            opacity=0.78,
+            colorbar=dict(title='|residual|', len=0.72, x=1.02),
+            line=dict(color='rgba(20,20,20,0.35)', width=0.4)
+        ),
+        customdata=np.column_stack([yhat_ff, residual_ff]),
+        hovertemplate=(
+            'Market excess return: %{x:.4f}<br>'
+            'SMB factor: %{y:.4f}<br>'
+            'Observed return: %{z:.4f}<br>'
+            'Fitted return: %{customdata[0]:.4f}<br>'
+            'Residual: %{customdata[1]:.4f}<extra></extra>'
+        ),
+        name='Observations (color = |residual|)'))
     
     fig_plane.add_trace(go.Scatter3d(
         x=xs_r, y=ys_r, z=zs_r, mode='lines',
-        line=dict(color='#EF553B', width=1.5),
-        name='Residuals  eᵢ = yᵢ − ŷᵢ'))
+        line=dict(color='#EF553B', width=2.2),
+        opacity=0.85,
+        name='Residual lines  (distance to plane)'))
     
     fig_plane.update_layout(
         scene=dict(
-            xaxis_title='MKT (market excess return)',
-            yaxis_title='SMB (size factor)',
-            zaxis_title='Portfolio return',
-            camera=dict(eye=dict(x=1.6, y=-1.8, z=0.8))
+            xaxis_title='Market Excess Return  (R_m^e)',
+            yaxis_title='Size Factor  (SMB)',
+            zaxis_title='Portfolio Excess Return  (R_i^e)',
+            xaxis=dict(backgroundcolor='rgb(245,247,250)', gridcolor='white', zerolinecolor='white'),
+            yaxis=dict(backgroundcolor='rgb(245,247,250)', gridcolor='white', zerolinecolor='white'),
+            zaxis=dict(backgroundcolor='rgb(245,247,250)', gridcolor='white', zerolinecolor='white'),
+            aspectmode='cube',
+            camera=dict(eye=dict(x=1.45, y=-1.55, z=1.15)),
+            annotations=[
+                dict(
+                    x=mkt[ann_idx[0]], y=smb[ann_idx[0]], z=ret_ff[ann_idx[0]],
+                    text='Large residual',
+                    showarrow=True, arrowhead=2, ax=25, ay=-35,
+                    bgcolor='rgba(255,255,255,0.88)'
+                ),
+                dict(
+                    x=mkt[ann_idx[1]], y=smb[ann_idx[1]], z=ret_ff[ann_idx[1]],
+                    text='Point close to plane',
+                    showarrow=True, arrowhead=2, ax=-30, ay=25,
+                    bgcolor='rgba(255,255,255,0.88)'
+                )
+            ]
         ),
-        title="OLS regression plane in ℝ³ — generalises the 2D fitted line to 2 regressors<br>"
-              "β̂ = (X'X)⁻¹X'y minimises the total squared length of the red vertical bars",
-        width=860, height=580, showlegend=True,
-        legend=dict(x=0.01, y=0.95))
+        title="Fama-French two-factor regression plane in 3D<br>"
+              "Height above or below the plane = residual; red segments show the distance from observed return to fitted return",
+        width=940, height=620, showlegend=True,
+        legend=dict(x=0.01, y=0.97, bgcolor='rgba(255,255,255,0.85)',
+                    bordercolor='lightgray', borderwidth=1))
     fig_plane.show()
+
+def projection_onto_span_demo():
+    """Illustrate that OLS fitted values are the projection of y onto span(X)."""
+    global basis_a, basis_b, corner_pts, fig_proj, normal_vec, perp_dir, x_span, y_vec, y_hat_vec
+    # ─── Simple 3D projection picture: one vector y projected onto a 2D subspace ─
+    # Choose two basis vectors that span a plane in R^3
+    basis_a = np.array([1.35, 0.25, 0.0])
+    basis_b = np.array([0.45, 1.15, 0.22])
+    x_span = np.column_stack([basis_a, basis_b])   # 3x2 matrix
+
+    # One observed vector y in R^3, not lying on the plane
+    y_vec = np.array([1.05, 0.86, 1.02])
+
+    # Orthogonal projection onto span(X)
+    y_hat_vec = x_span @ np.linalg.solve(x_span.T @ x_span, x_span.T @ y_vec)
+    perp_dir = y_vec - y_hat_vec
+    normal_vec = np.cross(basis_a, basis_b)
+
+    print("=== Projection Onto span(X) ===")
+    print(f"y     = {np.round(y_vec, 4)}")
+    print(f"y_hat = {np.round(y_hat_vec, 4)}")
+    print(f"e = y - y_hat = {np.round(perp_dir, 4)}")
+    print(f"Orthogonality check  X^T e = {np.round(x_span.T @ perp_dir, 8)}  (should be ~0)")
+
+    # Parallelogram representing the subspace slice spanned by the two basis vectors
+    corner_pts = np.array([
+        [0.0, 0.0, 0.0],
+        basis_a,
+        basis_a + basis_b,
+        basis_b
+    ])
+
+    fig_proj = go.Figure()
+
+    fig_proj.add_trace(go.Mesh3d(
+        x=corner_pts[:, 0], y=corner_pts[:, 1], z=corner_pts[:, 2],
+        i=[0, 0], j=[1, 2], k=[2, 3],
+        color='#B6CCFE', opacity=0.42,
+        flatshading=True, hoverinfo='skip',
+        name='span(X)'
+    ))
+
+    # Basis edges of the plane
+    fig_proj.add_trace(go.Scatter3d(
+        x=[0, basis_a[0], basis_a[0] + basis_b[0], basis_b[0], 0],
+        y=[0, basis_a[1], basis_a[1] + basis_b[1], basis_b[1], 0],
+        z=[0, basis_a[2], basis_a[2] + basis_b[2], basis_b[2], 0],
+        mode='lines',
+        line=dict(color='rgba(76,120,168,0.75)', width=3),
+        hoverinfo='skip',
+        name='Plane boundary'
+    ))
+
+    # Vector from origin to y_hat on the plane
+    fig_proj.add_trace(go.Scatter3d(
+        x=[0, y_hat_vec[0]], y=[0, y_hat_vec[1]], z=[0, y_hat_vec[2]],
+        mode='lines+markers+text',
+        line=dict(color='#4C78A8', width=5),
+        marker=dict(size=[3, 8], color=['#4C78A8', '#7D3CB5']),
+        text=['', 'ŷ'],
+        textposition='middle right',
+        name='Projection  ŷ'
+    ))
+
+    # Vector from origin to y
+    fig_proj.add_trace(go.Scatter3d(
+        x=[0, y_vec[0]], y=[0, y_vec[1]], z=[0, y_vec[2]],
+        mode='lines+markers+text',
+        line=dict(color='black', width=4),
+        marker=dict(size=[3, 8], color=['black', '#B05AD6']),
+        text=['', 'y'],
+        textposition='top center',
+        name='Observed vector  y'
+    ))
+
+    # Residual segment from y_hat to y
+    fig_proj.add_trace(go.Scatter3d(
+        x=[y_hat_vec[0], y_vec[0]], y=[y_hat_vec[1], y_vec[1]], z=[y_hat_vec[2], y_vec[2]],
+        mode='lines',
+        line=dict(color='#EF553B', width=5),
+        name='Residual  e = y - ŷ'
+    ))
+
+    fig_proj.update_layout(
+        title='Projection of y onto span(X)',
+        width=920, height=640,
+        legend=dict(x=0.02, y=0.98, bgcolor='rgba(255,255,255,0.85)',
+                    bordercolor='lightgray', borderwidth=1),
+        scene=dict(
+            xaxis_title='axis 1',
+            yaxis_title='axis 2',
+            zaxis_title='axis 3',
+            xaxis=dict(backgroundcolor='rgb(248,249,250)', gridcolor='white', zerolinecolor='white'),
+            yaxis=dict(backgroundcolor='rgb(248,249,250)', gridcolor='white', zerolinecolor='white'),
+            zaxis=dict(backgroundcolor='rgb(248,249,250)', gridcolor='white', zerolinecolor='white'),
+            aspectmode='cube',
+            camera=dict(eye=dict(x=1.55, y=-1.6, z=1.15)),
+            annotations=[
+                dict(
+                    x=(y_hat_vec[0] + y_vec[0]) / 2,
+                    y=(y_hat_vec[1] + y_vec[1]) / 2,
+                    z=(y_hat_vec[2] + y_vec[2]) / 2,
+                    text='e',
+                    showarrow=False,
+                    bgcolor='rgba(255,255,255,0.72)'
+                )
+            ]
+        )
+    )
+    fig_proj.show()
 
 def leverage_cooks_distance_demo():
     """Notebook cell 32."""
