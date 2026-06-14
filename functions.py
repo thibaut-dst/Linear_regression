@@ -360,6 +360,95 @@ def residual_diagnostics_demo():
         height=650, width=1000, showlegend=False)
     fig.show()
 
+def classical_ols_diagnostics_demo():
+    """Reference diagnostics when the classical OLS assumptions are approximately satisfied."""
+    global X_cd, b_cd, fig_cd, intercept_cd, n_cd, osm_cd, osr_cd, resid_cd, scale_cd, slope_cd, smooth_cd, x_cd, y_cd, yhat_cd
+    from statsmodels.nonparametric.smoothers_lowess import lowess as sm_lowess
+
+    np.random.seed(21)
+    n_cd = 180
+    x_cd = np.random.normal(0, 1.2, n_cd)
+    y_cd = 1.0 + 1.8 * x_cd + np.random.normal(0, 0.8, n_cd)
+
+    X_cd = np.column_stack([np.ones(n_cd), x_cd])
+    b_cd = np.linalg.solve(X_cd.T @ X_cd, X_cd.T @ y_cd)
+    yhat_cd = X_cd @ b_cd
+    resid_cd = y_cd - yhat_cd
+
+    (osm_cd, osr_cd), (slope_cd, intercept_cd, _) = stats.probplot(resid_cd)
+    smooth_cd = sm_lowess(resid_cd, yhat_cd, frac=0.45)
+    scale_cd = sm_lowess(np.sqrt(np.abs(resid_cd)), yhat_cd, frac=0.45)
+
+    fig_cd = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=[
+            'Residuals vs Fitted (A1, A5)',
+            'Q-Q Plot (A6)',
+            'Residuals vs Index (A5)',
+            'Scale-Location (A5)'
+        ]
+    )
+
+    fig_cd.add_trace(go.Scatter(
+        x=yhat_cd, y=resid_cd, mode='markers',
+        marker=dict(color=C['data'], opacity=0.5, size=4),
+        showlegend=False
+    ), row=1, col=1)
+    fig_cd.add_trace(go.Scatter(
+        x=smooth_cd[:, 0], y=smooth_cd[:, 1], mode='lines',
+        line=dict(color=C['fit'], width=2),
+        showlegend=False
+    ), row=1, col=1)
+    fig_cd.add_hline(y=0, line=dict(color='gray', dash='dash'), row=1, col=1)
+
+    fig_cd.add_trace(go.Scatter(
+        x=osm_cd, y=osr_cd, mode='markers',
+        marker=dict(color=C['data'], opacity=0.5, size=4),
+        showlegend=False
+    ), row=1, col=2)
+    fig_cd.add_trace(go.Scatter(
+        x=osm_cd, y=np.array(osm_cd) * slope_cd + intercept_cd, mode='lines',
+        line=dict(color=C['fit'], width=2),
+        showlegend=False
+    ), row=1, col=2)
+
+    fig_cd.add_trace(go.Scatter(
+        x=np.arange(n_cd), y=resid_cd, mode='markers+lines',
+        marker=dict(color=C['data'], opacity=0.45, size=3),
+        line=dict(color=C['data'], width=1),
+        showlegend=False
+    ), row=2, col=1)
+    fig_cd.add_hline(y=0, line=dict(color='gray', dash='dash'), row=2, col=1)
+
+    fig_cd.add_trace(go.Scatter(
+        x=yhat_cd, y=np.sqrt(np.abs(resid_cd)), mode='markers',
+        marker=dict(color=C['data'], opacity=0.5, size=4),
+        showlegend=False
+    ), row=2, col=2)
+    fig_cd.add_trace(go.Scatter(
+        x=scale_cd[:, 0], y=scale_cd[:, 1], mode='lines',
+        line=dict(color=C['fit'], width=2),
+        showlegend=False
+    ), row=2, col=2)
+
+    fig_cd.update_xaxes(title_text='Fitted ŷ', row=1, col=1)
+    fig_cd.update_yaxes(title_text='Residual', row=1, col=1)
+    fig_cd.update_xaxes(title_text='Theoretical quantiles', row=1, col=2)
+    fig_cd.update_yaxes(title_text='Sample quantiles', row=1, col=2)
+    fig_cd.update_xaxes(title_text='Observation index', row=2, col=1)
+    fig_cd.update_yaxes(title_text='Residual', row=2, col=1)
+    fig_cd.update_xaxes(title_text='Fitted ŷ', row=2, col=2)
+    fig_cd.update_yaxes(title_text='√|Residual|', row=2, col=2)
+    fig_cd.update_layout(
+        height=650,
+        width=980,
+        title='Benchmark diagnostics when the classical OLS assumptions are approximately satisfied'
+    )
+    fig_cd.show()
+
+    print("This is a benchmark case: the residual cloud stays roughly flat around zero,")
+    print("the Q-Q points are close to a straight line, and the spread remains fairly stable.")
+
 def fama_french_two_factor_demo():
     """Notebook cell 29."""
     global MKT_g, SMB_g, X_ff, Y_plane, ann_idx, beta_hat, center_mask, dist_center, eps_ff, est, fig_plane, i, keep_mask, lab, lr_ff, mkt, mkt_g, n_ff, plane_border_x, plane_border_y, plane_border_z, point_colors, point_sizes, residual_abs, residual_ff, residual_threshold, ret_ff, smb, smb_g, tru, true_alpha_ff, true_betas, worst_mask, xs_r, yhat_ff, ys_r, zs_r
@@ -1047,6 +1136,46 @@ def gm_visuals_demo():
     )
     fig_a.show()
 
+def gm_clean_error_ridge_demo():
+    """Show the ideal conditional error distribution under classical OLS assumptions."""
+    global Eg_clean, Xg_clean, Zg_clean, e_g_clean, fig_gm_clean, peak_z_clean, x_g_clean
+    x_g_clean = np.linspace(0.5, 5.5, 35)
+    e_g_clean = np.linspace(-3.5, 3.5, 70)
+    Xg_clean, Eg_clean = np.meshgrid(x_g_clean, e_g_clean)
+    Zg_clean = stats.norm.pdf(Eg_clean, loc=0, scale=1)
+    peak_z_clean = stats.norm.pdf(0, 0, 1)
+
+    fig_gm_clean = go.Figure()
+    fig_gm_clean.add_trace(go.Surface(
+        x=Xg_clean, y=Eg_clean, z=Zg_clean,
+        colorscale=[[0, 'rgba(99,110,250,0.02)'], [1, 'rgba(99,110,250,0.9)']],
+        showscale=False,
+        opacity=0.86,
+        name='p(ε|x)'
+    ))
+    fig_gm_clean.add_trace(go.Scatter3d(
+        x=x_g_clean,
+        y=np.zeros_like(x_g_clean),
+        z=np.full_like(x_g_clean, peak_z_clean),
+        mode='lines',
+        line=dict(color='red', width=6),
+        name='E[ε|x] = 0'
+    ))
+    fig_gm_clean.update_layout(
+        title='Classical OLS benchmark: errors centred at zero with constant Gaussian shape',
+        scene=dict(
+            xaxis_title='x (predictor)',
+            yaxis_title='ε (error)',
+            zaxis_title='p(ε|x)',
+            camera=dict(eye=dict(x=1.8, y=-1.6, z=0.9))
+        ),
+        width=900,
+        height=560,
+        margin=dict(l=20, r=20, t=70, b=20),
+        legend=dict(x=0.02, y=0.95, bgcolor='rgba(255,255,255,0.85)', borderwidth=1)
+    )
+    fig_gm_clean.show()
+
 def assumption_violations_demo():
     """Notebook cell 48."""
     global P, c, c_col, e_ar, e_e, e_h, e_nl, eps_ar, eps_h, fig, fit_and_resid, n_v, rho, t, x_v, xsort, y_ar, y_e, y_h, y_nl, yhat_e, yhat_h, yhat_nl, z
@@ -1124,6 +1253,77 @@ def assumption_violations_demo():
     print("A4 violation: residuals correlated with x (but looks OK vs fitted — endogeneity is subtle).")
     print("A5a: fan shape — variance grows with x.")
     print("A5b: clear serial correlation — residuals cluster above/below zero in runs.")
+
+def linearity_violation_demo():
+    """Show what a functional-form failure looks like in the data and in residuals."""
+    global X_lin, b_lin, fig_lin, fit_lin, n_lin, reset_res, resid_lin, smooth_lin, x_grid_lin, x_lin, y_lin, yhat_lin
+    from statsmodels.nonparametric.smoothers_lowess import lowess as sm_lowess
+
+    np.random.seed(8)
+    n_lin = 180
+    x_lin = np.linspace(0, 10, n_lin)
+    y_lin = 1.0 + 0.7 * x_lin + 0.12 * x_lin**2 + np.random.normal(0, 1.0, n_lin)
+
+    X_lin = np.column_stack([np.ones(n_lin), x_lin])
+    b_lin = np.linalg.solve(X_lin.T @ X_lin, X_lin.T @ y_lin)
+    yhat_lin = X_lin @ b_lin
+    resid_lin = y_lin - yhat_lin
+    x_grid_lin = np.linspace(x_lin.min(), x_lin.max(), 300)
+    smooth_lin = sm_lowess(resid_lin, yhat_lin, frac=0.4)
+
+    fit_lin = sm.OLS(y_lin, sm.add_constant(x_lin)).fit()
+    reset_res = sms.linear_reset(fit_lin, power=2, use_f=True)
+
+    fig_lin = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=['Data with a misspecified linear fit', 'Residuals vs Fitted']
+    )
+
+    fig_lin.add_trace(go.Scatter(
+        x=x_lin, y=y_lin, mode='markers',
+        marker=dict(color=C['data'], opacity=0.45, size=4),
+        showlegend=False
+    ), row=1, col=1)
+    fig_lin.add_trace(go.Scatter(
+        x=x_grid_lin,
+        y=1.0 + 0.7 * x_grid_lin + 0.12 * x_grid_lin**2,
+        mode='lines',
+        line=dict(color=C['true'], width=2),
+        name='True nonlinear relation'
+    ), row=1, col=1)
+    fig_lin.add_trace(go.Scatter(
+        x=x_grid_lin,
+        y=b_lin[0] + b_lin[1] * x_grid_lin,
+        mode='lines',
+        line=dict(color=C['fit'], width=2),
+        name='Linear OLS fit'
+    ), row=1, col=1)
+
+    fig_lin.add_trace(go.Scatter(
+        x=yhat_lin, y=resid_lin, mode='markers',
+        marker=dict(color=C['data'], opacity=0.45, size=4),
+        showlegend=False
+    ), row=1, col=2)
+    fig_lin.add_trace(go.Scatter(
+        x=smooth_lin[:, 0], y=smooth_lin[:, 1], mode='lines',
+        line=dict(color=C['fit'], width=2),
+        showlegend=False
+    ), row=1, col=2)
+    fig_lin.add_hline(y=0, line=dict(color='gray', dash='dash'), row=1, col=2)
+
+    fig_lin.update_xaxes(title_text='x', row=1, col=1)
+    fig_lin.update_yaxes(title_text='y', row=1, col=1)
+    fig_lin.update_xaxes(title_text='Fitted ŷ', row=1, col=2)
+    fig_lin.update_yaxes(title_text='Residual', row=1, col=2)
+    fig_lin.update_layout(
+        height=430,
+        width=980,
+        title='Linearity failure: a straight line leaves systematic curvature in the residuals'
+    )
+    fig_lin.show()
+
+    print(f"Ramsey RESET test: F = {reset_res.fvalue:.4f}, p-value = {reset_res.pvalue:.4e}")
+    print("The curved residual pattern tells us the linear functional form is too restrictive.")
 
 def inference_demo():
     """Notebook cell 56."""
